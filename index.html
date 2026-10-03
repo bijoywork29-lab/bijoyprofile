@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIJOY THEVAR // Unreal Engine Portfolio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        engine: {
+                            bg: '#0a0a0c',
+                            panel: '#121318',
+                            border: '#2a2b36',
+                            accent: '#00f0ff',
+                            orange: '#ff7700',
+                            text: '#c0c5d0',
+                            bright: '#ffffff'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js for 3D interactive background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome for gaming icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0c; color: #c0c5d0; overflow: hidden; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar for game engine inspector */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #121318; }
+        ::-webkit-scrollbar-thumb { background: #2a2b36; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+        canvas { display: block; position: fixed; top: 0; left: 0; z-index: 0; width: 100vw; height: 100vh; pointer-events: auto; }
+        .glass-panel { background: rgba(18, 19, 24, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(42, 43, 54, 0.8); }
+        .glow-cyan { box-shadow: 0 0 20px rgba(0, 240, 255, 0.15); }
+        .glow-orange { box-shadow: 0 0 20px rgba(255, 119, 0, 0.2); }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .animate-pulse-slow { animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden select-none flex flex-col">
+
+    <canvas id="canvas3d"></canvas>
+
+    <header class="relative z-20 h-11 bg-[#121318] border-b border-[#2a2b36] flex items-center justify-between px-4 text-xs font-mono text-[#8a8f9d]">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 text-[#00f0ff] font-bold tracking-wider">
+                <i class="fa-solid fa-cube text-sm animate-pulse"></i>
+                <span>UNREAL_EDITOR // V5.4.2</span>
+            </div>
+            <div class="h-4 w-[1px] bg-[#2a2b36]"></div>
+            <div class="flex items-center space-x-3">
+                <button onclick="switchTab('viewport')" id="nav-viewport" class="px-3 py-1 rounded bg-[#1a1b24] text-[#00f0ff] border border-[#00f0ff]/40 transition hover:bg-[#222433]">Viewport</button>
+                <button onclick="switchTab('profile')" id="nav-profile" class="px-3 py-1 rounded hover:text-white hover:bg-[#1a1b24] transition">Profile</button>
+                <button onclick="switchTab('experience')" id="nav-experience" class="px-3 py-1 rounded hover:text-white hover:bg-[#1a1b24] transition">Experience & Skills</button>
+                <button onclick="switchTab('projects')" id="nav-projects" class="px-3 py-1 rounded hover:text-white hover:bg-[#1a1b24] transition">Showreel & Gear</button>
+                <button onclick="switchTab('contact')" id="nav-contact" class="px-3 py-1 rounded hover:text-white hover:bg-[#1a1b24] transition">Contact</button>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="hidden md:flex items-center space-x-2 bg-[#0a0a0c] px-3 py-1 rounded border border-[#2a2b36]">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-400 animate-ping"></span>
+                <span class="text-green-400 font-bold" id="fps-counter">FPS: 60</span>
+            </div>
+            <button onclick="toggleAudio()" id="audio-btn" class="px-2.5 py-1 rounded bg-[#1a1b24] hover:bg-[#2a2b36] text-[#c0c5d0] border border-[#2a2b36] transition" title="Toggle UI SFX">
+                <i class="fa-solid fa-volume-high" id="audio-icon"></i>
+            </button>
+            <div class="text-[#00f0ff] font-bold">BIJOY_THEVAR.uasset</div>
+        </div>
+    </header>
+
+    <div class="relative z-10 flex-1 flex overflow-hidden">
+        
+        <!-- Left Toolbar (Engine Tools) -->
+        <aside class="w-14 bg-[#121318]/90 backdrop-blur border-r border-[#2a2b36] flex flex-col items-center py-4 space-y-4 text-[#8a8f9d]">
+            <button onclick="switchTab('viewport')" class="p-2.5 rounded hover:bg-[#222433] hover:text-[#00f0ff] transition" title="Select / Move Tool"><i class="fa-solid fa-arrow-pointer"></i></button>
+            <button onclick="switchTab('profile')" class="p-2.5 rounded hover:bg-[#222433] hover:text-[#00f0ff] transition" title="Character Blueprint (Profile)"><i class="fa-solid fa-user-gear"></i></button>
+            <button onclick="switchTab('experience')" class="p-2.5 rounded hover:bg-[#222433] hover:text-[#00f0ff] transition" title="Skills & Animation Node graph"><i class="fa-solid fa-network-wired"></i></button>
+            <button onclick="switchTab('projects')" class="p-2.5 rounded hover:bg-[#222433] hover:text-[#00f0ff] transition" title="Media & Video Player"><i class="fa-solid fa-clapperboard"></i></button>
+            <button onclick="switchTab('contact')" class="p-2.5 rounded hover:bg-[#222433] hover:text-[#00f0ff] transition" title="World Settings & Contact"><i class="fa-solid fa-globe"></i></button>
+            <div class="w-8 h-[1px] bg-[#2a2b36] my-2"></div>
+            <button onclick="triggerEngineSparks()" class="p-2.5 rounded text-[#ff7700] hover:bg-[#ff7700]/10 transition" title="Spawn VFX Particles"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+        </aside>
+
+        <!-- Central Viewport & Overlays -->
+        <main class="flex-1 relative flex flex-col p-4 md:p-6 overflow-y-auto">
+            
+            <!-- Viewport Overlay: Gizmo Axis (Top Right) -->
+            <div class="absolute top-6 right-6 pointer-events-none hidden md:block z-10 opacity-75">
+                <div class="w-20 h-20 rounded-full glass-panel flex items-center justify-center relative font-mono text-[10px]">
+                    <span class="absolute top-1 text-red-500 font-bold">X</span>
+                    <span class="absolute bottom-1 left-4 text-green-500 font-bold">Y</span>
+                    <span class="absolute bottom-2 right-2 text-blue-400 font-bold">Z</span>
+                    <div class="w-3 h-3 rounded-full bg-[#2a2b36] border border-[#00f0ff]"></div>
+                </div>
+            </div>
+
+            <!-- TAB 1: VIEWPORT (Hero Landing) -->
+            <section id="tab-viewport" class="tab-content flex-1 flex flex-col justify-center items-start max-w-3xl space-y-6 my-auto">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] font-mono text-xs">
+                    <span class="w-2 h-2 rounded-full bg-[#00f0ff] animate-ping"></span>
+                    <span>ACTIVE LEVEL: SJU_CAMPUS_STUDIO_V1</span>
+                </div>
+                
+                <div class="space-y-2">
+                    <h2 class="text-xs font-mono text-[#8a8f9d] tracking-widest">// DIGITAL MEDIA & ANIMATION STUDENT</h2>
+                    <h1 class="text-4xl md:text-7xl font-extrabold text-white tracking-tight">
+                        BIJOY <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#00f0ff] to-blue-600">THEVAR</span>
+                    </h1>
+                    <p class="text-lg md:text-xl text-[#c0c5d0] font-light max-w-2xl leading-relaxed">
+                        Passionate Video Editor, Motion Graphics Artist, and Cinematic Videographer crafting high-impact visual stories. Currently leveling up at <strong class="text-white font-semibold">St. Joseph's University, Bengaluru</strong>.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-4 pt-2">
+                    <button onclick="switchTab('projects')" class="px-6 py-3 rounded-lg bg-[#00f0ff] text-black font-semibold hover:bg-[#00d0df] transition flex items-center space-x-2 glow-cyan">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Explore Showreel</span>
+                    </button>
+                    <button onclick="switchTab('profile')" class="px-6 py-3 rounded-lg glass-panel text-white hover:bg-[#1a1b24] transition flex items-center space-x-2 border border-[#2a2b36]">
+                        <i class="fa-solid fa-address-card text-[#00f0ff]"></i>
+                        <span>View Blueprint</span>
+                    </button>
+                </div>
+
+                <!-- Quick Stats Footer inside Viewport -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full pt-6">
+                    <div class="glass-panel p-4 rounded-lg border border-[#2a2b36]">
+                        <div class="text-xs font-mono text-[#8a8f9d]">DEGREE</div>
+                        <div class="text-sm font-bold text-white mt-1">BVOC Digital Animation</div>
+                        <div class="text-[10px] text-[#00f0ff] mt-0.5">2024 - 2027</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg border border-[#2a2b36]">
+                        <div class="text-xs font-mono text-[#8a8f9d]">CAMERA GEAR</div>
+                        <div class="text-sm font-bold text-white mt-1">Sony ZV-E10</div>
+                        <div class="text-[10px] text-[#00f0ff] mt-0.5">Cinematic 4K Ops</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg border border-[#2a2b36]">
+                        <div class="text-xs font-mono text-[#8a8f9d]">SPECIALTY</div>
+                        <div class="text-sm font-bold text-white mt-1">Color Grading & CC</div>
+                        <div class="text-[10px] text-[#ff7700] mt-0.5">DaVinci / Premiere Pro</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg border border-[#2a2b36]">
+                        <div class="text-xs font-mono text-[#8a8f9d]">LOCATION</div>
+                        <div class="text-sm font-bold text-white mt-1">Bangalore / Mumbai</div>
+                        <div class="text-[10px] text-[#00f0ff] mt-0.5">Available Worldwide</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: PROFILE (Character Blueprint) -->
+            <section id="tab-profile" class="tab-content hidden flex-1 max-w-4xl space-y-6 my-auto w-full">
+                <div class="flex items-center justify-between border-b border-[#2a2b36] pb-4">
+                    <div>
+                        <div class="text-xs font-mono text-[#00f0ff]">// CHARACTER BLUEPRINT</div>
+                        <h2 class="text-2xl font-bold text-white">Bijoy Thevar - Profile Details</h2>
+                    </div>
+                    <span class="px-3 py-1 rounded bg-[#ff7700]/10 text-[#ff7700] text-xs font-mono border border-[#ff7700]/30">STATUS: ACTIVE_STUDENT</span>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Photo & Quick details card -->
+                    <div class="glass-panel p-5 rounded-xl border border-[#2a2b36] flex flex-col items-center text-center space-y-4">
+                        <div class="w-32 h-32 rounded-lg overflow-hidden border-2 border-[#00f0ff]/50 relative group">
+                            <!-- Placeholder portrait using styled avatar -->
+                            <img src="https://placehold.co/400x400/121318/00f0ff?text=BIJOY" alt="Bijoy Thevar" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-[#00f0ff]/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center font-mono text-xs text-black font-bold">
+                                MESH_LOADED
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Bijoy Thevar</h3>
+                            <p class="text-xs font-mono text-[#00f0ff]">Video Editor & Motion Artist</p>
+                        </div>
+                        <div class="w-full pt-2 border-t border-[#2a2b36] text-left text-xs space-y-2 font-mono">
+                            <div class="flex justify-between"><span class="text-[#8a8f9d]">Institution:</span> <span class="text-white">St. Joseph's Univ</span></div>
+                            <div class="flex justify-between"><span class="text-[#8a8f9d]">Program:</span> <span class="text-white">BVOC Animation</span></div>
+                            <div class="flex justify-between"><span class="text-[#8a8f9d]">Batch:</span> <span class="text-white">2024 - 2027</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Bio & Objective -->
+                    <div class="md:col-span-2 glass-panel p-6 rounded-xl border border-[#2a2b36] space-y-4">
+                        <h3 class="text-sm font-mono text-[#00f0ff] uppercase tracking-wider">// Biography & Professional Summary</h3>
+                        <p class="text-sm text-[#c0c5d0] leading-relaxed">
+                            Creative and passionate Digital Media & Animation student with strong foundational and applied skills in <strong class="text-white">Video Editing, Motion Graphics, and Videography</strong>. Currently pursuing the final year of B.Voc. in Digital Media & Animation at St. Joseph's University (SJU), Bengaluru.
+                        </p>
+                        <p class="text-sm text-[#c0c5d0] leading-relaxed">
+                            Experienced in creating engaging visual content, cinematic edits, promotional videos, and social media content. Highly proficient in handling camera operations using the <strong class="text-white">Sony ZV-E10</strong> and delivering high-quality visual storytelling from pre-production to final delivery.
+                        </p>
+                        <div class="p-4 rounded-lg bg-[#0a0a0c] border border-[#2a2b36] space-y-2">
+                            <div class="text-xs font-mono text-[#ff7700]">// CAREER OBJECTIVE</div>
+                            <p class="text-xs text-[#8a8f9d]">
+                                To begin a professional career as a Video Editor, Motion Graphics Artist, or Videographer where I can apply my creativity and technical skills while continuously learning and contributing to impactful visual content.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: EXPERIENCE & SKILLS (Node Graph Inspector) -->
+            <section id="tab-experience" class="tab-content hidden flex-1 max-w-4xl space-y-6 my-auto w-full">
+                <div class="flex items-center justify-between border-b border-[#2a2b36] pb-4">
+                    <div>
+                        <div class="text-xs font-mono text-[#00f0ff]">// SKILL TREE & WORK EXPERIENCE</div>
+                        <h2 class="text-2xl font-bold text-white">Professional Competencies</h2>
+                    </div>
+                    <span class="px-3 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] text-xs font-mono border border-[#00f0ff]/30">ENGINE: UNREAL_BLUEPRINTS</span>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Skills Component Card -->
+                    <div class="glass-panel p-6 rounded-xl border border-[#2a2b36] space-y-4">
+                        <h3 class="text-sm font-mono text-[#00f0ff] uppercase tracking-wider"><i class="fa-solid fa-sliders mr-2"></i>Core Skill Nodes</h3>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs font-mono mb-1">
+                                    <span class="text-white">Video Editing & Cutting</span>
+                                    <span class="text-[#00f0ff]">98%</span>
+                                </div>
+                                <div class="w-full h-2 bg-[#0a0a0c] rounded-full overflow-hidden border border-[#2a2b36]">
+                                    <div class="h-full bg-gradient-to-r from-[#00f0ff] to-blue-600 rounded-full" style="width: 98%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-mono mb-1">
+                                    <span class="text-white">Color Correction & Grading (CC & CG)</span>
+                                    <span class="text-[#00f0ff]">95%</span>
+                                </div>
+                                <div class="w-full h-2 bg-[#0a0a0c] rounded-full overflow-hidden border border-[#2a2b36]">
+                                    <div class="h-full bg-gradient-to-r from-[#00f0ff] to-blue-600 rounded-full" style="width: 95%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-mono mb-1">
+                                    <span class="text-white">Motion Graphics & Effects</span>
+                                    <span class="text-[#ff7700]">90%</span>
+                                </div>
+                                <div class="w-full h-2 bg-[#0a0a0c] rounded-full overflow-hidden border border-[#2a2b36]">
+                                    <div class="h-full bg-gradient-to-r from-[#ff7700] to-yellow-500 rounded-full" style="width: 90%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-mono mb-1">
+                                    <span class="text-white">Videography & Camera Ops (Sony ZV-E10)</span>
+                                    <span class="text-[#00f0ff]">94%</span>
+                                </div>
+                                <div class="w-full h-2 bg-[#0a0a0c] rounded-full overflow-hidden border border-[#2a2b36]">
+                                    <div class="h-full bg-gradient-to-r from-[#00f0ff] to-blue-600 rounded-full" style="width: 94%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex flex-wrap gap-2">
+                            <span class="px-2.5 py-1 rounded bg-[#1a1b24] text-xs font-mono text-[#00f0ff] border border-[#2a2b36]">Adobe Premiere Pro</span>
+                            <span class="px-2.5 py-1 rounded bg-[#1a1b24] text-xs font-mono text-[#00f0ff] border border-[#2a2b36]">DaVinci Resolve</span>
+                            <span class="px-2.5 py-1 rounded bg-[#1a1b24] text-xs font-mono text-[#ff7700] border border-[#2a2b36]">After Effects</span>
+                            <span class="px-2.5 py-1 rounded bg-[#1a1b24] text-xs font-mono text-white border border-[#2a2b36]">Sony ZV-E10</span>
+                        </div>
+                    </div>
+
+                    <!-- Work Experience Component Card -->
+                    <div class="glass-panel p-6 rounded-xl border border-[#2a2b36] space-y-4">
+                        <h3 class="text-sm font-mono text-[#00f0ff] uppercase tracking-wider"><i class="fa-solid fa-briefcase mr-2"></i>Work Experience & Roles</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="border-l-2 border-[#00f0ff] pl-4 space-y-1">
+                                <div class="text-xs font-mono text-[#00f0ff]">VIDEO EDITOR & PRODUCER</div>
+                                <h4 class="text-sm font-bold text-white">Cinematic Short Film Productions</h4>
+                                <p class="text-xs text-[#8a8f9d]">
+                                    Edited and produced cinematic short films from pre-production storyboarding to final post-production color grading and sound delivery.
+                                </p>
+                            </div>
+
+                            <div class="border-l-2 border-[#ff7700] pl-4 space-y-1">
+                                <div class="text-xs font-mono text-[#ff7700]">CINEMATOGRAPHER & CAM_OP</div>
+                                <h4 class="text-sm font-bold text-white">Campus & Commercial Videography</h4>
+                                <p class="text-xs text-[#8a8f9d]">
+                                    Shot high-quality videos using the Sony ZV-E10 for college projects, promotional events, and creative social media productions.
+                                </p>
+                            </div>
+
+                            <div class="border-l-2 border-purple-500 pl-4 space-y-1">
+                                <div class="text-xs font-mono text-purple-400">COLORIST & MOTION ARTIST</div>
+                                <h4 class="text-sm font-bold text-white">Color Correction & Grading (CC & CG)</h4>
+                                <p class="text-xs text-[#8a8f9d]">
+                                    Specialized in visual storytelling, audio synchronization, and color grading for high-engagement social media content.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PROJECTS (Showreel & Media Node) -->
+            <section id="tab-projects" class="tab-content hidden flex-1 max-w-4xl space-y-6 my-auto w-full">
+                <div class="flex items-center justify-between border-b border-[#2a2b36] pb-4">
+                    <div>
+                        <div class="text-xs font-mono text-[#00f0ff]">// ASSET BROWSER & SHOWREEL</div>
+                        <h2 class="text-2xl font-bold text-white">Featured Projects & Productions</h2>
+                    </div>
+                    <span class="px-3 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] text-xs font-mono border border-[#00f0ff]/30">TOTAL ASSETS: 4</span>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Project 1 -->
+                    <div class="glass-panel rounded-xl overflow-hidden border border-[#2a2b36] group hover:border-[#00f0ff] transition">
+                        <div class="h-40 bg-[#0a0a0c] relative overflow-hidden flex items-center justify-center">
+                            <img src="https://placehold.co/600x300/1a1b24/00f0ff?text=Cinematic+Short+Film" alt="Project 1" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-500">
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div class="w-12 h-12 rounded-full bg-[#00f0ff]/90 text-black flex items-center justify-center font-bold shadow-lg group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-play ml-0.5"></i>
+                                </div>
+                            </div>
+                            <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-mono text-[#00f0ff]">SHORT FILM // EDITING</span>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <h3 class="text-base font-bold text-white">Narrative Short Film Cut</h3>
+                            <p class="text-xs text-[#8a8f9d]">Complete editorial workflow covering rough cut, sound design sync, and cinematic color grading.</p>
+                            <div class="flex items-center space-x-2 pt-2">
+                                <span class="px-2 py-0.5 rounded bg-[#1a1b24] text-[10px] font-mono text-[#00f0ff]">Premiere Pro</span>
+                                <span class="px-2 py-0.5 rounded bg-[#1a1b24] text-[10px] font-mono text-[#ff7700]">DaVinci Resolve</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Project 2 -->
+                    <div class="glass-panel rounded-xl overflow-hidden border border-[#2a2b36] group hover:border-[#00f0ff] transition">
+                        <div class="h-40 bg-[#0a0a0c] relative overflow-hidden flex items-center justify-center">
+                            <img src="https://placehold.co/600x300/1a1b24/ff7700?text=Sony+ZV-E10+Videography" alt="Project 2" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-500">
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div class="w-12 h-12 rounded-full bg-[#ff7700]/90 text-black flex items-center justify-center font-bold shadow-lg group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-play ml-0.5"></i>
+                                </div>
+                            </div>
+                            <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-mono text-[#ff7700]">VIDEOGRAPHY // SONY ZV-E10</span>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <h3 class="text-base font-bold text-white">Campus Creative Promo</h3>
+                            <p class="text-xs text-[#8a8f9d]">Dynamic promotional video shot entirely on Sony ZV-E10 with professional stabilization and color looks.</p>
+                            <div class="flex items-center space-x-2 pt-2">
+                                <span class="px-2 py-0.5 rounded bg-[#1a1b24] text-[10px] font-mono text-[#00f0ff]">Sony ZV-E10</span>
+                                <span class="px-2 py-0.5 rounded bg-[#1a1b24] text-[10px] font-mono text-[#ff7700]">4K 30FPS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: CONTACT (World Settings Inspector) -->
+            <section id="tab-contact" class="tab-content hidden flex-1 max-w-4xl space-y-6 my-auto w-full">
+                <div class="flex items-center justify-between border-b border-[#2a2b36] pb-4">
+                    <div>
+                        <div class="text-xs font-mono text-[#00f0ff]">// TRANSMISSION HUB & CONTACT</div>
+                        <h2 class="text-2xl font-bold text-white">Connect With Bijoy Thevar</h2>
+                    </div>
+                    <span class="px-3 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] text-xs font-mono border border-[#00f0ff]/30">STATUS: READY_TO_RECEIVE</span>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Contact Info Cards -->
+                    <div class="space-y-4">
+                        <div class="glass-panel p-4 rounded-xl border border-[#2a2b36] flex items-center space-x-4">
+                            <div class="w-10 h-10 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff] flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-phone"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-[#8a8f9d]">PHONE NUMBER</div>
+                                <a href="tel:9892720931" class="text-white font-bold hover:text-[#00f0ff] transition">+91 98927 20931</a>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-4 rounded-xl border border-[#2a2b36] flex items-center space-x-4">
+                            <div class="w-10 h-10 rounded-lg bg-[#ff7700]/10 text-[#ff7700] flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-[#8a8f9d]">LOCATION / REGION</div>
+                                <div class="text-white font-bold">Bangalore & Mumbai, India</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-4 rounded-xl border border-[#2a2b36] space-y-3">
+                            <div class="text-xs font-mono text-[#00f0ff]">INSTAGRAM CHANNELS</div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <a href="https://instagram.com" target="_blank" class="p-3 rounded-lg bg-[#0a0a0c] border border-[#2a2b36] hover:border-[#00f0ff] text-center transition block">
+                                    <div class="text-xs text-[#8a8f9d] font-mono">FX Portfolio</div>
+                                    <div class="text-xs font-bold text-white mt-1">@IG-BIJOYIY.FX</div>
+                                </a>
+                                <a href="https://instagram.com" target="_blank" class="p-3 rounded-lg bg-[#0a0a0c] border border-[#2a2b36] hover:border-[#ff7700] text-center transition block">
+                                    <div class="text-xs text-[#8a8f9d] font-mono">Creative</div>
+                                    <div class="text-xs font-bold text-white mt-1">@IG-BEBALLINN</div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct Message Form -->
+                    <div class="glass-panel p-6 rounded-xl border border-[#2a2b36] space-y-4">
+                        <h3 class="text-sm font-mono text-[#00f0ff] uppercase tracking-wider">// Send Blueprint Transmission</h3>
+                        
+                        <form onsubmit="handleMessageSubmit(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-mono text-[#8a8f9d] mb-1">SENDER_NAME</label>
+                                <input type="text" required placeholder="Enter your name or studio..." class="w-full bg-[#0a0a0c] border border-[#2a2b36] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00f0ff] transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-mono text-[#8a8f9d] mb-1">SENDER_CONTACT</label>
+                                <input type="email" required placeholder="Email or phone number..." class="w-full bg-[#0a0a0c] border border-[#2a2b36] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00f0ff] transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-mono text-[#8a8f9d] mb-1">TRANSMISSION_MESSAGE</label>
+                                <textarea rows="3" required placeholder="Discuss project scope, editing gig, or collaboration..." class="w-full bg-[#0a0a0c] border border-[#2a2b36] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00f0ff] transition"></textarea>
+                            </div>
+                            <button type="submit" class="w-full py-3 rounded-lg bg-[#00f0ff] text-black font-semibold hover:bg-[#00d0df] transition flex items-center justify-center space-x-2 glow-cyan font-mono text-xs">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>DISPATCH MESSAGE</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <footer class="relative z-20 h-8 bg-[#121318] border-t border-[#2a2b36] flex items-center justify-between px-4 text-[10px] font-mono text-[#8a8f9d]">
+        <div class="flex items-center space-x-3">
+            <span class="text-[#00f0ff]"><i class="fa-solid fa-circle-check mr-1"></i> Ready</span>
+            <span>|</span>
+            <span>St. Joseph's University (SJU), Bengaluru</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span>Camera: Sony ZV-E10 Active</span>
+            <span class="text-[#ff7700]">Unreal 3D Viewport Live</span>
+        </div>
+    </footer>
+
+    <script>
+        // Web Audio API Sound Synthesizer for UI Clicks
+        let audioEnabled = true;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(freq = 440, type = 'sine', duration = 0.05) {
+            if (!audioEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                // Audio context policy fallback
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            if (audioEnabled) {
+                icon.className = "fa-solid fa-volume-high";
+                playBeep(600, 'sine', 0.1);
+            } else {
+                icon.className = "fa-solid fa-volume-xmark";
+            }
+        }
+
+        // Tab Switching Logic
+        const tabs = ['viewport', 'profile', 'experience', 'projects', 'contact'];
+        function switchTab(tabName) {
+            playBeep(520, 'triangle', 0.08);
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                const nav = document.getElementById(`nav-${t}`);
+                if (t === tabName) {
+                    el.classList.remove('hidden');
+                    if (nav) {
+                        nav.className = "px-3 py-1 rounded bg-[#1a1b24] text-[#00f0ff] border border-[#00f0ff]/40 transition";
+                    }
+                } else {
+                    el.classList.add('hidden');
+                    if (nav) {
+                        nav.className = "px-3 py-1 rounded hover:text-white hover:bg-[#1a1b24] transition text-[#8a8f9d]";
+                    }
+                }
+            });
+        }
+
+        function handleMessageSubmit(e) {
+            e.preventDefault();
+            playBeep(880, 'sine', 0.2);
+            alert("Transmission successfully dispatched to Bijoy Thevar! Thank you for connecting.");
+            e.target.reset();
+        }
+
+        // Three.js Interactive 3D Background Environment (Unreal / Unity Grid & Particles)
+        let scene, camera, renderer, particlesMesh, wireframeGrid, floatingObjects = [];
+        let mouseX = 0, mouseY = 0;
+        let targetX = 0, targetY = 0;
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+
+        function initThree() {
+            const canvas = document.getElementById('canvas3d');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0a0c, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // 1. Create Sci-Fi Wireframe Grid Floor (Game Engine Grid)
+            const gridHelper = new THREE.GridHelper(100, 40, 0x00f0ff, 0x2a2b36);
+            gridHelper.position.y = -10;
+            scene.add(gridHelper);
+
+            // 2. Create Floating Interactive Particle Field
+            const particlesCount = 1200;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particlesCount * 3);
+
+            for (let i = 0; i < particlesCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 80;
+                positions[i + 1] = (Math.random() - 0.5) * 60;
+                positions[i + 2] = (Math.random() - 0.5) * 80;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({
+                size: 0.35,
+                color: 0x00f0ff,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending
+            });
+
+            particlesMesh = new THREE.Points(geometry, material);
+            scene.add(particlesMesh);
+
+            // 3. Create Floating 3D Geometric Objects (representing nodes, cameras, cubes)
+            const objGeometries = [
+                new THREE.BoxGeometry(2, 2, 2),
+                new THREE.OctahedronGeometry(2),
+                new THREE.TetrahedronGeometry(2.2),
+                new THREE.IcosahedronGeometry(1.8)
+            ];
+
+            for (let i = 0; i < 15; i++) {
+                const geo = objGeometries[Math.floor(Math.random() * objGeometries.length)];
+                const mat = new THREE.MeshBasicMaterial({
+                    color: i % 2 === 0 ? 0x00f0ff : 0xff7700,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.35
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 50,
+                    (Math.random() - 0.5) * 30,
+                    (Math.random() - 0.5) * 40
+                );
+                mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                scene.add(mesh);
+                floatingObjects.push({
+                    mesh: mesh,
+                    rotSpeedX: (Math.random() - 0.5) * 0.01,
+                    rotSpeedY: (Math.random() - 0.5) * 0.01
+                });
+            }
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousemove', onDocumentMouseMove);
+        }
+
+        function triggerEngineSparks() {
+            playBeep(900, 'sawtooth', 0.15);
+            // Flash particles color or burst
+            particlesMesh.material.color.setHex(Math.random() > 0.5 ? 0xff7700 : 0x00f0ff);
+            setTimeout(() => {
+                particlesMesh.material.color.setHex(0x00f0ff);
+            }, 500);
+        }
+
+        function onDocumentMouseMove(event) {
+            mouseX = (event.clientX - windowHalfX) * 0.001;
+            mouseY = (event.clientY - windowHalfY) * 0.001;
+        }
+
+        function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation Loop
+        let clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Smooth mouse interpolation (parallax)
+            targetX += (mouseX - targetX) * 0.05;
+            targetY += (mouseY - targetY) * 0.05;
+
+            camera.position.x = targetX * 10;
+            camera.position.y = -targetY * 10;
+            camera.lookAt(scene.position);
+
+            // Rotate particle field slowly
+            if (particlesMesh) {
+                particlesMesh.rotation.y = elapsedTime * 0.03;
+                particlesMesh.rotation.x = elapsedTime * 0.015;
+            }
+
+            // Rotate floating geometric objects
+            floatingObjects.forEach(item => {
+                item.mesh.rotation.x += item.rotSpeedX;
+                item.mesh.rotation.y += item.rotSpeedY;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            initThree();
+            animate();
+            
+            // FPS Counter simulation
+            setInterval(() => {
+                const fps = Math.floor(58 + Math.random() * 3);
+                document.getElementById('fps-counter').innerText = `FPS: ${fps}`;
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
